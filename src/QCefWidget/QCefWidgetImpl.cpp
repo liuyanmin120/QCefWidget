@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QTimer>
 #include <QPainter>
+#include <QDesktopWidget>
 #include <include/base/cef_logging.h>
 #include "Include/QCefWidget.h"
 #include "Include/QCefOpenGLWidget.h"
@@ -35,9 +36,17 @@ QCefWidgetImpl::QCefWidgetImpl(WidgetType vt, QWidget* pWidget) :
   QCefManager::getInstance().initializeCef();
 
   deviceScaleFactor_ = pWidget_->devicePixelRatioF();
-
+  //
+  int currentScreen = QApplication::desktop()->screenNumber(pWidget_); // ¶àÆÁ
+  QScreen* pScreen = nullptr;
+  if (currentScreen >= 0 && currentScreen < QGuiApplication::screens().size()) {
+      pScreen = QGuiApplication::screens().at(currentScreen);
+  }
+  else {
+      pScreen = QGuiApplication::primaryScreen();
+  }
   connect(pWidget_->window()->windowHandle(), &QWindow::screenChanged, this, &QCefWidgetImpl::onScreenChanged);
-  connect(pWidget_->window()->screen(), &QScreen::logicalDotsPerInchChanged, this, &QCefWidgetImpl::onScreenLogicalDotsPerInchChanged);
+  connect(pScreen, &QScreen::logicalDotsPerInchChanged, this, &QCefWidgetImpl::onScreenLogicalDotsPerInchChanged);
 }
 
 QCefWidgetImpl::~QCefWidgetImpl() {
@@ -306,14 +315,19 @@ void QCefWidgetImpl::browserDestoryedNotify(CefRefPtr<CefBrowser> browser) {
     QCefManager::getInstance().unhookTopWidget(pTopWidget_);
     QCefManager::getInstance().removeAllCefWidgets(pTopWidget_);
     if (pTopWidget_) {
-      QMetaObject::invokeMethod(
-          pTopWidget_, [this]() {
-            QTimer::singleShot(500, [this]() { // give enought time to release cef resource
-              if (pTopWidget_)
+//       QMetaObject::invokeMethod(
+//           pTopWidget_, [this]() {
+//             QTimer::singleShot(500, [this]() { // give enought time to release cef resource
+//               if (pTopWidget_)
+//                 pTopWidget_->close();
+//             });
+//           },
+//           Qt::QueuedConnection);
+
+        QTimer::singleShot(500, [this]() { // give enought time to release cef resource
+            if (pTopWidget_)
                 pTopWidget_->close();
             });
-          },
-          Qt::QueuedConnection);
     }
   }
 }
@@ -495,14 +509,20 @@ void QCefWidgetImpl::imeCompositionRangeChangedNotify(
 
 void QCefWidgetImpl::navigateToUrl(const QString& url) {
   if (!browserCreated_) {
-    QMetaObject::invokeMethod(
-        pWidget_,
-        [this, url]() {
+//     QMetaObject::invokeMethod(
+//         pWidget_,
+//         [this, url]() {
+//           if (!createBrowser(url)) {
+//             Q_ASSERT(false);
+//           }
+//         },
+//         Qt::QueuedConnection);
+
+      QTimer::singleShot(1, [this, url]() { // give enought time to release cef resource
           if (!createBrowser(url)) {
-            Q_ASSERT(false);
+              Q_ASSERT(false);
           }
-        },
-        Qt::QueuedConnection);
+      });
     return;
   }
 
