@@ -37,9 +37,9 @@ TestWnd::TestWnd(QWidget* parent) :
   systemPerformanceMonitor();
 
   qDebug() << "devicePixelRatioF:" << this->devicePixelRatioF();
-  QScreen* pScreen =
-      QGuiApplication::screenAt(this->mapToGlobal({this->width() / 2, 0}));
-  qDebug() << "devicePixelRatio:" << pScreen->devicePixelRatio();
+//   QScreen* pScreen =
+//       QGuiApplication::screenAt(this->mapToGlobal({this->width() / 2, 0}));
+//   qDebug() << "devicePixelRatio:" << pScreen->devicePixelRatio();
 }
 
 TestWnd::~TestWnd() {
@@ -222,7 +222,7 @@ void TestWnd::setupUi() {
 
   QHBoxLayout* hlMainProcDashboard = new QHBoxLayout();
   QLabel* labelMainProcDashboard = new QLabel(
-      QString("Main Process").split(" ", Qt::SkipEmptyParts).join("\n"));
+      QString("Main Process").split(" ", QString::SkipEmptyParts).join("\n"));
   labelMainProcDashboard->setFixedSize(60, 120);
   labelMainProcDashboard->setWordWrap(true);
   labelMainProcDashboard->setAlignment(Qt::AlignCenter);
@@ -250,7 +250,7 @@ void TestWnd::setupUi() {
 
   QHBoxLayout* hlRenderProcDashboard = new QHBoxLayout();
   QLabel* labelRenderProcDashboard = new QLabel(
-      QString("Render Process").split(" ", Qt::SkipEmptyParts).join("\n"));
+      QString("Render Process").split(" ", QString::SkipEmptyParts).join("\n"));
   labelRenderProcDashboard->setFixedSize(60, 120);
   labelRenderProcDashboard->setWordWrap(true);
   labelRenderProcDashboard->setAlignment(Qt::AlignCenter);

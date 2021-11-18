@@ -184,9 +184,9 @@ bool QCefBrowserHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
     return false;
 
   QString result = QString("[%1] [%2] %3\r\n")
-                       .arg(source.ToWString())
+                       .arg(QString::fromStdWString(source.ToWString()))
                        .arg(line)
-                       .arg(message.ToWString());
+                       .arg(QString::fromStdWString(message.ToWString()));
   if (consoleLog_.isOpen()) {
     consoleLogSteam_ << result;
   }
