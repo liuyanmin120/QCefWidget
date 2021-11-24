@@ -267,51 +267,49 @@ void QCefManager::setBrowserClosed(QWidget* pCefWidget) {
 }
 
 void QCefManager::showDevTools(QWidget* pCefWidget) {
-  std::lock_guard<std::recursive_mutex> lg(cefsMutex_);
-  Q_ASSERT(pCefWidget);
-  if (!pCefWidget)
-    return;
-
-#if (QT_VERSION > QT_VERSION_CHECK(5,12,0))
-   QMetaObject::invokeMethod(pCefWidget, [this, pCefWidget]() {
-     for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
-       if (it->cefWidget == pCefWidget) {
-         if (it->devToolsWnd) {
-           if (it->devToolsWnd->isMinimized())
-             it->devToolsWnd->showNormal();
-           else
-             it->devToolsWnd->show();
-           it->devToolsWnd->activateWindow();
-           return;
-         }
- 
-         it->devToolsWnd = new QCefDevToolsWnd(it->browser, nullptr);
-         break;
-       }
-     }
-   });
-#endif
+    QMetaObject::invokeMethod(this, "onSetVisibleDevTools", Qt::QueuedConnection, Q_ARG(QWidget*, pCefWidget), Q_ARG(bool, true));
 }
 
 void QCefManager::closeDevTools(QWidget* pCefWidget) {
-  std::lock_guard<std::recursive_mutex> lg(cefsMutex_);
-  Q_ASSERT(pCefWidget);
-  if (!pCefWidget)
-    return;
+    QMetaObject::invokeMethod(this, "onSetVisibleDevTools", Qt::QueuedConnection, Q_ARG(QWidget*, pCefWidget), Q_ARG(bool, false));
+}
 
-#if (QT_VERSION > QT_VERSION_CHECK(5,12,0))
-  QMetaObject::invokeMethod(pCefWidget, [this, pCefWidget]() {
-      for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
-          if (it->cefWidget == pCefWidget) {
-              if (it->devToolsWnd) {
-                  it->devToolsWnd->close();
-                  it->devToolsWnd = nullptr;
-              }
-              break;
-          }
-      }
-      });
-#endif
+void QCefManager::onSetVisibleDevTools(QWidget* pCefWidget, bool bShow)
+{
+    std::lock_guard<std::recursive_mutex> lg(cefsMutex_);
+    Q_ASSERT(pCefWidget);
+    if (!pCefWidget)
+        return;
+
+    if (bShow)
+    {
+        for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
+            if (it->cefWidget == pCefWidget) {
+                if (it->devToolsWnd) {
+                    if (it->devToolsWnd->isMinimized())
+                        it->devToolsWnd->showNormal();
+                    else
+                        it->devToolsWnd->show();
+                    it->devToolsWnd->activateWindow();
+                    return;
+                }
+
+                it->devToolsWnd = new QCefDevToolsWnd(it->browser, nullptr);
+                break;
+            }
+        }
+    }
+    else {
+        for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
+            if (it->cefWidget == pCefWidget) {
+                if (it->devToolsWnd) {
+                    it->devToolsWnd->close();
+                    it->devToolsWnd = nullptr;
+                }
+                break;
+            }
+        }
+    }
 }
 
 void QCefManager::devToolsClosedNotify(QCefDevToolsWnd* pWnd) {

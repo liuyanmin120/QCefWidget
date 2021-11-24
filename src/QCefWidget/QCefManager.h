@@ -41,6 +41,9 @@ class QCefManager : public QObject {
   void closeDevTools(QWidget* pCefWidget);
   void devToolsClosedNotify(QCefDevToolsWnd* pWnd);
 
+public slots:
+    void onSetVisibleDevTools(QWidget* pCefWidget, bool bShow);
+
  protected:
   QCefManager();
   ~QCefManager();
