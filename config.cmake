@@ -10,18 +10,18 @@ SET(QCEF_VERSION_PATCH 3)
 
 
 # The Qt SDK path
-set(QT_SDK_DIR "C:/Qt/Qt5.15.2-MSVC2017-x86-Shared")
+set(QT_SDK_DIR "D:/Qt/Qt5.9.8/5.9.8/msvc2015")
 
 
 # The root dir of the CEF SDK
-set(CEF_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dep/cef_binary_89.0.18+gb36241d+chromium-89.0.4389.114_windows32")
+set(CEF_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dep/cef_binary_89.0.12+g2b76680+chromium-89.0.4389.90_windows32")
 #set(CEF_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dep/cef_binary_76.1.13+gf19c584+chromium-76.0.3809.132_windows32")
 #set(CEF_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dep/cef_binary_3.3626.1895.g7001d56_windows32")
 
 # CEF version
 SET(CEF_VERSION_MAJOR 89)
 SET(CEF_VERSION_MINOR 0)
-SET(CEF_VERSION_PATCH 18)
+SET(CEF_VERSION_PATCH 12)
 
 SET(QCEF_WING_EXE "QCefWing")
 SET(QCEF_WIDGET_DLL "QCefWidget")
