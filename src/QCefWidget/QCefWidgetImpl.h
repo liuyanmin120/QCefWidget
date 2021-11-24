@@ -84,6 +84,9 @@ protected:
   CefRefPtr<CefBrowserHost> getCefBrowserHost();
   void simulateResizeEvent();
 
+private:
+    bool eventFilter(QObject *obj, QEvent *event) override;
+
   static LRESULT CALLBACK SubclassedWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
   static void subclassWindow(HWND hWnd, HWND hQCefWidgetHwnd, QWidget* pTopLevelWidget);
   static void unSubclassWindow(HWND hWnd);

@@ -35,6 +35,7 @@ QCefWidgetImpl::QCefWidgetImpl(WidgetType vt, QWidget* pWidget) :
   draggableRegion_ = ::CreateRectRgn(0, 0, 0, 0);
   QCefManager::getInstance().initializeCef();
 
+  pWidget_->installEventFilter(this);
   deviceScaleFactor_ = pWidget_->devicePixelRatioF();
   //
   int currentScreen = QApplication::desktop()->screenNumber(pWidget_); // ¶àÆÁ
@@ -62,13 +63,20 @@ bool QCefWidgetImpl::createBrowser(const QString& url) {
   if (browserCreated_)
     return true;
   Q_ASSERT(pWidget_);
-  CefWindowHandle hwnd = (CefWindowHandle)pWidget_->winId();
-  Q_ASSERT(hwnd);
-  if (!hwnd)
-    return false;
+  CefWindowHandle hwnd = nullptr;
+  if (!browserSetting_.osrQWidgetNoHwnd)
+  {
+      hwnd = (CefWindowHandle)pWidget_->winId();
+      Q_ASSERT(hwnd);
+      if (!hwnd)
+          return false;
+  }
 
 #if (defined Q_OS_WIN32 || defined Q_OS_WIN64)
-  RegisterTouchWindow(hwnd, 0);
+  if (hwnd)
+  {
+      RegisterTouchWindow(hwnd, 0);
+  }
 #endif
 
   QCefGlobalSetting::initializeInstance();
@@ -223,36 +231,39 @@ void QCefWidgetImpl::browserCreatedNotify(CefRefPtr<CefBrowser> browser) {
 #if (defined Q_OS_WIN32 || defined Q_OS_WIN64)
   if (pCefUIEventWin_)
     pCefUIEventWin_.reset();
-  if (browserSetting_.osrEnabled) {
-    Q_ASSERT(pQCefViewHandler_);
-    pCefUIEventWin_ = std::make_shared<QCefWidgetUIEventHandlerWin>(
-        (HWND)pWidget_->winId(), browser, pQCefViewHandler_);
-    Q_ASSERT(pCefUIEventWin_);
-    if (pCefUIEventWin_) {
-      pCefUIEventWin_->setDeviceScaleFactor(deviceScaleFactor_);
-    }
-  }
+  if (!browserSetting_.osrQWidgetNoHwnd)
+  {
+      if (browserSetting_.osrEnabled) {
+          Q_ASSERT(pQCefViewHandler_);
+          pCefUIEventWin_ = std::make_shared<QCefWidgetUIEventHandlerWin>(
+              (HWND)pWidget_->winId(), browser, pQCefViewHandler_);
+          Q_ASSERT(pCefUIEventWin_);
+          if (pCefUIEventWin_) {
+              pCefUIEventWin_->setDeviceScaleFactor(deviceScaleFactor_);
+          }
+      }
 
-  // See QTBUG-89646
-  QRect curRc = pWidget_->geometry();
-  ::SetWindowPos((HWND)pWidget_->winId(), NULL,
-                 curRc.x() * deviceScaleFactor_,
-                 curRc.y() * deviceScaleFactor_,
-                 curRc.width() * deviceScaleFactor_,
-                 curRc.height() * deviceScaleFactor_,
-                 SWP_NOZORDER);
+      // See QTBUG-89646
+      QRect curRc = pWidget_->geometry();
+      ::SetWindowPos((HWND)pWidget_->winId(), NULL,
+          curRc.x() * deviceScaleFactor_,
+          curRc.y() * deviceScaleFactor_,
+          curRc.width() * deviceScaleFactor_,
+          curRc.height() * deviceScaleFactor_,
+          SWP_NOZORDER);
 
-  CefWindowHandle cefhwnd = NULL;
-  if (browser && browser->GetHost())
-    cefhwnd = browser->GetHost()->GetWindowHandle();
-  if (cefhwnd) {
-    ::SetWindowPos(cefhwnd,
-                   NULL,
-                   0,
-                   0,
-                   curRc.width() * deviceScaleFactor_,
-                   curRc.height() * deviceScaleFactor_,
-                   SWP_NOZORDER);
+      CefWindowHandle cefhwnd = NULL;
+      if (browser && browser->GetHost())
+          cefhwnd = browser->GetHost()->GetWindowHandle();
+      if (cefhwnd) {
+          ::SetWindowPos(cefhwnd,
+              NULL,
+              0,
+              0,
+              curRc.width() * deviceScaleFactor_,
+              curRc.height() * deviceScaleFactor_,
+              SWP_NOZORDER);
+      }
   }
 #else
 #error("No implement")
@@ -268,16 +279,18 @@ void QCefWidgetImpl::browserContextCreatedNotify(CefRefPtr<CefBrowser> browser) 
   Q_ASSERT(pTopWidget_);
   if (browser && browser->GetHost()) {
     HWND hwnd = browser->GetHost()->GetWindowHandle();
-    Q_ASSERT(hwnd);
-    if (hwnd) {
-      if (browserSetting_.osrEnabled) {
-        subclassWindow(hwnd,
-                       (HWND)pWidget_->winId(),
-                       pTopWidget_);
-      }
-      else {
-        ::EnumChildWindows(hwnd, EnumWindowsProc4Subclass, reinterpret_cast<LPARAM>(this));
-      }
+    if (hwnd)
+    {
+        if (hwnd) {
+            if (browserSetting_.osrEnabled) {
+                subclassWindow(hwnd,
+                    (HWND)pWidget_->winId(),
+                    pTopWidget_);
+            }
+            else {
+                ::EnumChildWindows(hwnd, EnumWindowsProc4Subclass, reinterpret_cast<LPARAM>(this));
+            }
+        }
     }
   }
 }
@@ -289,7 +302,6 @@ void QCefWidgetImpl::browserClosingNotify(CefRefPtr<CefBrowser> browser) {
   Q_ASSERT(browser && browser->GetHost());
   if (browser && browser->GetHost()) {
     HWND hwnd = browser->GetHost()->GetWindowHandle();
-    Q_ASSERT(hwnd);
     if (hwnd) {
       if (browserSetting_.osrEnabled) {
         unSubclassWindow(hwnd);
@@ -330,6 +342,72 @@ void QCefWidgetImpl::browserDestoryedNotify(CefRefPtr<CefBrowser> browser) {
             });
     }
   }
+}
+
+bool QCefWidgetImpl::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == pWidget_)
+    {
+        switch (event->type()) {
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseButtonRelease:
+        case QEvent::MouseButtonDblClick:
+        {
+            QMouseEvent *pEvent = static_cast<QMouseEvent*>(event);
+            bool mouseUp = pEvent->type() == QEvent::MouseButtonRelease;
+
+            CefMouseEvent e;
+            e.modifiers = 0;
+            e.x = pEvent->x();
+            e.y = pEvent->y();
+            if (pEvent->buttons().testFlag(Qt::LeftButton))
+                e.modifiers |= EVENTFLAG_LEFT_MOUSE_BUTTON;
+            if (pEvent->buttons().testFlag(Qt::MiddleButton))
+                e.modifiers |= EVENTFLAG_MIDDLE_MOUSE_BUTTON;
+            if (pEvent->buttons().testFlag(Qt::RightButton))
+                e.modifiers |= EVENTFLAG_RIGHT_MOUSE_BUTTON;
+
+
+            if (this->browser() && this->browser()->GetHost())
+                this->browser()->GetHost()->SendMouseClickEvent(e, MBT_LEFT, mouseUp, 1);
+            break;
+        }
+
+//         case QEvent::MouseMove:
+//         case QEvent::Enter:
+//         case QEvent::Leave:
+//             return this->HandleMouseMoveEvent(
+//                 static_cast<QMouseEvent *>(event));
+// 
+//         case QEvent::Wheel:
+//             return this->HandleMouseWheelEvent(
+//                 static_cast<QWheelEvent *>(event));
+//         case QEvent::FocusIn:
+//         case QEvent::FocusOut:
+//             return this->HandleFocusEvent(
+//                 static_cast<QFocusEvent *>(event));
+        case QEvent::KeyPress:
+        case QEvent::KeyRelease:
+        {
+            QKeyEvent *pEvent = static_cast<QKeyEvent *>(event);
+
+            CefKeyEvent e;
+            e.windows_key_code = pEvent->nativeVirtualKey();
+            e.native_key_code = pEvent->nativeScanCode();
+            e.type = pEvent->type() == QEvent::KeyRelease ? KEYEVENT_KEYUP : KEYEVENT_RAWKEYDOWN;
+            //e.native_key_code = native_vkey;
+            e.modifiers = pEvent->nativeModifiers();
+            if (this->browser() && this->browser()->GetHost())
+                this->browser()->GetHost()->SendKeyEvent(e);
+
+            break;
+        }
+        default:
+            return false;
+        }
+    }
+
+    return false;
 }
 
 LRESULT CALLBACK QCefWidgetImpl::SubclassedWindowProc(HWND hWnd,
@@ -490,11 +568,13 @@ void QCefWidgetImpl::draggableRegionsChangedNotify(
                  it->draggable ? RGN_OR : RGN_DIFF);
     ::DeleteObject(region);
   }
-
-  if (regions.empty())
-    ::RemovePropW((HWND)pWidget_->winId(), kDraggableRegion);
-  else
-    ::SetPropW((HWND)pWidget_->winId(), kDraggableRegion, reinterpret_cast<HANDLE>(draggableRegion_));
+  if (!browserSetting_.osrQWidgetNoHwnd)
+  {
+      if (regions.empty())
+          ::RemovePropW((HWND)pWidget_->winId(), kDraggableRegion);
+      else
+          ::SetPropW((HWND)pWidget_->winId(), kDraggableRegion, reinterpret_cast<HANDLE>(draggableRegion_));
+  }
 }
 
 void QCefWidgetImpl::imeCompositionRangeChangedNotify(

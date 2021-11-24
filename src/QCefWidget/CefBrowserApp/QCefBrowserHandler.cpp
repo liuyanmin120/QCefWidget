@@ -875,14 +875,14 @@ bool QCefBrowserHandler::OnCursorChange(
   if (pImpl_ && !pImpl_->isOsrEnabled()) {
     return false;
   }
-  QWidget* pWidget = pImpl_->getWidget();
-  if (pWidget) {
-    SetClassLongPtr((HWND)pWidget->winId(),
-                    GCLP_HCURSOR,
-                    static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
-    ::SetCursor(cursor);
-    return true;
-  }
+//   QWidget* pWidget = pImpl_->getWidget();
+//   if (pWidget) {
+//     SetClassLongPtr((HWND)pWidget->winId(),
+//                     GCLP_HCURSOR,
+//                     static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
+//     ::SetCursor(cursor);
+//     return true;
+//   }
   return false;
 }
 #endif

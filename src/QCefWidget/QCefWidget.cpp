@@ -15,13 +15,17 @@
 
 QCefWidget::QCefWidget(const QString& url, QWidget* parent) :
     QWidget(parent) {
-  setAttribute(Qt::WA_NativeWindow, true);
-  setAttribute(Qt::WA_InputMethodEnabled, true);
-  setAttribute(Qt::WA_StyledBackground, true);
 
   pImpl_ = std::make_unique<QCefWidgetImpl>(WidgetType::WT_Widget, this);
   if (!url.isEmpty()) {
     pImpl_->navigateToUrl(url);
+  }
+
+  if (!pImpl_->browserSetting().osrQWidgetNoHwnd)
+  {
+      setAttribute(Qt::WA_NativeWindow, true);
+      setAttribute(Qt::WA_InputMethodEnabled, true);
+      setAttribute(Qt::WA_StyledBackground, true);
   }
 }
 
