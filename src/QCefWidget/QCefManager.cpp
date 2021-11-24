@@ -272,23 +272,25 @@ void QCefManager::showDevTools(QWidget* pCefWidget) {
   if (!pCefWidget)
     return;
 
-  QMetaObject::invokeMethod(pCefWidget, [this, pCefWidget]() {
-    for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
-      if (it->cefWidget == pCefWidget) {
-        if (it->devToolsWnd) {
-          if (it->devToolsWnd->isMinimized())
-            it->devToolsWnd->showNormal();
-          else
-            it->devToolsWnd->show();
-          it->devToolsWnd->activateWindow();
-          return;
-        }
-
-        it->devToolsWnd = new QCefDevToolsWnd(it->browser, nullptr);
-        break;
-      }
-    }
-  });
+#if (QT_VERSION > QT_VERSION_CHECK(5,12,0))
+   QMetaObject::invokeMethod(pCefWidget, [this, pCefWidget]() {
+     for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
+       if (it->cefWidget == pCefWidget) {
+         if (it->devToolsWnd) {
+           if (it->devToolsWnd->isMinimized())
+             it->devToolsWnd->showNormal();
+           else
+             it->devToolsWnd->show();
+           it->devToolsWnd->activateWindow();
+           return;
+         }
+ 
+         it->devToolsWnd = new QCefDevToolsWnd(it->browser, nullptr);
+         break;
+       }
+     }
+   });
+#endif
 }
 
 void QCefManager::closeDevTools(QWidget* pCefWidget) {
@@ -297,17 +299,19 @@ void QCefManager::closeDevTools(QWidget* pCefWidget) {
   if (!pCefWidget)
     return;
 
+#if (QT_VERSION > QT_VERSION_CHECK(5,12,0))
   QMetaObject::invokeMethod(pCefWidget, [this, pCefWidget]() {
-    for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
-      if (it->cefWidget == pCefWidget) {
-        if (it->devToolsWnd) {
-          it->devToolsWnd->close();
-          it->devToolsWnd = nullptr;
-        }
-        break;
+      for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
+          if (it->cefWidget == pCefWidget) {
+              if (it->devToolsWnd) {
+                  it->devToolsWnd->close();
+                  it->devToolsWnd = nullptr;
+              }
+              break;
+          }
       }
-    }
-  });
+      });
+#endif
 }
 
 void QCefManager::devToolsClosedNotify(QCefDevToolsWnd* pWnd) {
