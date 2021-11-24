@@ -184,9 +184,9 @@ bool QCefBrowserHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
     return false;
 
   QString result = QString("[%1] [%2] %3\r\n")
-                       .arg(source.ToWString())
+                       .arg(QString::fromStdWString(source.ToWString()))
                        .arg(line)
-                       .arg(message.ToWString());
+                       .arg(QString::fromStdWString(message.ToWString()));
   if (consoleLog_.isOpen()) {
     consoleLogSteam_ << result;
   }
@@ -875,14 +875,14 @@ bool QCefBrowserHandler::OnCursorChange(
   if (pImpl_ && !pImpl_->isOsrEnabled()) {
     return false;
   }
-  QWidget* pWidget = pImpl_->getWidget();
-  if (pWidget) {
-    SetClassLongPtr((HWND)pWidget->winId(),
-                    GCLP_HCURSOR,
-                    static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
-    ::SetCursor(cursor);
-    return true;
-  }
+//   QWidget* pWidget = pImpl_->getWidget();
+//   if (pWidget) {
+//     SetClassLongPtr((HWND)pWidget->winId(),
+//                     GCLP_HCURSOR,
+//                     static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
+//     ::SetCursor(cursor);
+//     return true;
+//   }
   return false;
 }
 #endif
