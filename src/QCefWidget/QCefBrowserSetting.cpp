@@ -3,6 +3,7 @@
 #include <QDir>
 
 QCefBrowserSetting::QCefBrowserSetting() :
+    osrQWidgetNoSysWnd(true),
     osrEnabled(true),
     contextMenuEnabled(true),
     autoShowDevToolsContextMenu(true),

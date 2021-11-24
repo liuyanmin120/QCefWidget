@@ -9,6 +9,7 @@ class QCefBrowserSetting {
   QCefBrowserSetting();
   ~QCefBrowserSetting();
 
+  bool osrQWidgetNoSysWnd;
   bool osrEnabled;
   bool contextMenuEnabled;
   bool executeUnknownProtocolViaOS;
