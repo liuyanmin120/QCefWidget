@@ -627,3 +627,29 @@ void QCefWidgetUIEventHandlerWin::setDeviceScaleFactor(float factor) {
 }
 
 #endif
+
+QCefWidgetUIEventHandler::QCefWidgetUIEventHandler(QWidget* pQCefWdg, 
+    CefRefPtr<CefBrowser> pCefBrowser, CefRefPtr<QCefBrowserHandler> pBrowserHandler)
+{
+    pQCefWdg_ = pQCefWdg;
+    pCefBrowser_ = pCefBrowser;
+    pBrowserHandler_ = pBrowserHandler;
+    if (pQCefWdg_)
+    {
+        pQCefWdg_->installEventFilter(this);
+    }
+}
+
+QCefWidgetUIEventHandler::~QCefWidgetUIEventHandler()
+{
+    if (pQCefWdg_)
+    {
+        pQCefWdg_->removeEventFilter(this);
+    }
+}
+
+bool QCefWidgetUIEventHandler::eventFilter(QObject *obj, QEvent *event)
+{
+
+    return false;
+}

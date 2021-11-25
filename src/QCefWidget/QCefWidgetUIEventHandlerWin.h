@@ -67,4 +67,24 @@ class QCefWidgetUIEventHandlerWin {
 };
 
 #endif
+
+#include <QWidget>
+
+// cross platform
+class QCefWidgetUIEventHandler : public QObject {
+    Q_OBJECT
+public:
+    QCefWidgetUIEventHandler(QWidget* pQCefWdg, CefRefPtr<CefBrowser> pCefBrowser,
+        CefRefPtr<QCefBrowserHandler> pBrowserHandler);
+    ~QCefWidgetUIEventHandler();
+
+protected:
+    bool eventFilter(QObject *obj, QEvent *event);
+
+private:
+    QWidget* pQCefWdg_;
+    CefRefPtr<CefBrowser> pCefBrowser_;
+    CefRefPtr<QCefBrowserHandler> pBrowserHandler_;
+};
+
 #endif  // !UI_EVENT_HANDLER_WIN_H_
