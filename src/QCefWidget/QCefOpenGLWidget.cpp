@@ -15,7 +15,8 @@
 QCefOpenGLWidget::QCefOpenGLWidget(const QString& url,
                                    QWidget* parent /*= nullptr*/) :
     QOpenGLWidget(parent) {
-  setAttribute(Qt::WA_NativeWindow, true);
+    // osrQWidgetNoSysWnd
+//  setAttribute(Qt::WA_NativeWindow, true);
   setAttribute(Qt::WA_InputMethodEnabled, true);
   setAttribute(Qt::WA_StyledBackground, true);
 
@@ -83,6 +84,18 @@ bool QCefOpenGLWidget::responseCefQuery(const QCefQuery& query) {
 void QCefOpenGLWidget::executeJavascript(const QString& javascript) {
   Q_ASSERT(pImpl_);
   pImpl_->executeJavascript(javascript);
+}
+
+bool QCefOpenGLWidget::setOsrNoSysWndEnabled(bool b)
+{
+    Q_ASSERT(pImpl_);
+    return pImpl_->setOsrNoSysWndEnabled(b);
+}
+
+bool QCefOpenGLWidget::osrNoSysWndEnabled() const
+{
+    Q_ASSERT(pImpl_);
+    return pImpl_->browserSetting().osrQWidgetNoSysWnd;
 }
 
 bool QCefOpenGLWidget::setOsrEnabled(bool b) {

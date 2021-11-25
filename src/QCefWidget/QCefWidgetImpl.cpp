@@ -937,6 +937,19 @@ void QCefWidgetImpl::visibleChangedNotify(bool visible) {
   }
 }
 
+bool QCefWidgetImpl::setOsrNoSysWndEnabled(bool b)
+{
+    if (browserCreated_)
+        return false;
+    browserSetting_.osrQWidgetNoSysWnd = b;
+    return true;
+}
+
+bool QCefWidgetImpl::isOsrNoSysWndEnabled()
+{
+    return browserSetting_.osrQWidgetNoSysWnd;
+}
+
 bool QCefWidgetImpl::setOsrEnabled(bool b) {
   if (browserCreated_)
     return false;

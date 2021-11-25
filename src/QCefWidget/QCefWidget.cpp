@@ -15,7 +15,9 @@
 
 QCefWidget::QCefWidget(const QString& url, QWidget* parent) :
     QWidget(parent) {
-  setAttribute(Qt::WA_NativeWindow, true);
+
+    // osrQWidgetNoSysWnd
+//   setAttribute(Qt::WA_NativeWindow, true);
   setAttribute(Qt::WA_InputMethodEnabled, true);
   setAttribute(Qt::WA_StyledBackground, true);
 
@@ -82,6 +84,18 @@ bool QCefWidget::responseCefQuery(const QCefQuery& query) {
 void QCefWidget::executeJavascript(const QString& javascript) {
   Q_ASSERT(pImpl_);
   pImpl_->executeJavascript(javascript);
+}
+
+bool QCefWidget::setOsrNoSysWndEnabled(bool b)
+{
+    Q_ASSERT(pImpl_);
+    return pImpl_->setOsrNoSysWndEnabled(b);
+}
+
+bool QCefWidget::osrNoSysWndEnabled() const
+{
+    Q_ASSERT(pImpl_);
+    return pImpl_->browserSetting().osrQWidgetNoSysWnd;
 }
 
 bool QCefWidget::setOsrEnabled(bool b) {

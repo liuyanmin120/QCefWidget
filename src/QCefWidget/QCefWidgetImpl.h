@@ -57,6 +57,8 @@ public:
   void visibleChangedNotify(bool visible);
 
   void setBrowserBackgroundColor(const QColor &color);
+  bool setOsrNoSysWndEnabled(bool b);
+  bool isOsrNoSysWndEnabled();
   bool setOsrEnabled(bool b);
   bool isOsrEnabled();
   void setContextMenuEnabled(bool b);

@@ -52,6 +52,12 @@ class QCEFWIDGET_EXPORT QCefOpenGLWidget : public QOpenGLWidget {
   virtual void executeJavascript(const QString& javascript);
 
   // Must be set before browser created, otherwise return false.
+
+  // OSR pure qt event. no system window. enabled by default.
+  //
+  virtual bool setOsrNoSysWndEnabled(bool b);
+  virtual bool osrNoSysWndEnabled() const;
+
   // OSR is enabled by default.
   //
   virtual bool setOsrEnabled(bool b);
