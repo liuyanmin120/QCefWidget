@@ -74,9 +74,17 @@ class QCefWidgetUIEventHandlerWin {
 class QCefWidgetUIEventHandler : public QObject {
     Q_OBJECT
 public:
-    QCefWidgetUIEventHandler(QWidget* pQCefWdg, CefRefPtr<CefBrowser> pCefBrowser,
-        CefRefPtr<QCefBrowserHandler> pBrowserHandler);
+    QCefWidgetUIEventHandler(QWidget* pQCefWdg);
     ~QCefWidgetUIEventHandler();
+    void SetCefBrowser(CefRefPtr<CefBrowser> pCefBrowser, CefRefPtr<QCefBrowserHandler> pBrowserHandler);
+    void ReleaseUIEvent();
+
+protected:
+    bool HandleMouseClickEvent(QMouseEvent *event);
+    bool HandleMouseMoveEvent(QMouseEvent *event);
+    bool HandleMouseWheelEvent(QWheelEvent *event);
+    bool HandleFocusEvent(QFocusEvent *event);
+    bool HandleKeyEvent(QKeyEvent *event);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event);

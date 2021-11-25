@@ -628,19 +628,74 @@ void QCefWidgetUIEventHandlerWin::setDeviceScaleFactor(float factor) {
 
 #endif
 
-QCefWidgetUIEventHandler::QCefWidgetUIEventHandler(QWidget* pQCefWdg, 
-    CefRefPtr<CefBrowser> pCefBrowser, CefRefPtr<QCefBrowserHandler> pBrowserHandler)
+#include <string>
+//
+static int TranslateQtKeyboardEventModifiers(QInputEvent *event,
+    bool mouseEvent)
+{
+    int obsModifiers = EVENTFLAG_NONE;
+
+    if (event->modifiers().testFlag(Qt::ShiftModifier))
+        obsModifiers |= EVENTFLAG_SHIFT_DOWN;
+    if (event->modifiers().testFlag(Qt::AltModifier))
+        obsModifiers |= EVENTFLAG_ALT_DOWN;
+#ifdef __APPLE__
+    // Mac: Meta = Control, Control = Command
+    if (event->modifiers().testFlag(Qt::ControlModifier))
+        obsModifiers |= EVENTFLAG_COMMAND_DOWN;
+    if (event->modifiers().testFlag(Qt::MetaModifier))
+        obsModifiers |= EVENTFLAG_CONTROL_DOWN;
+#else
+    // Handle windows key? Can a browser even trap that key?
+    if (event->modifiers().testFlag(Qt::ControlModifier))
+        obsModifiers |= EVENTFLAG_CONTROL_DOWN;
+#endif
+
+    if (!mouseEvent) {
+        if (event->modifiers().testFlag(Qt::KeypadModifier))
+            obsModifiers |= EVENTFLAG_IS_KEY_PAD;
+    }
+
+    return obsModifiers;
+}
+
+static int TranslateQtMouseEventModifiers(QMouseEvent *event)
+{
+    int modifiers = TranslateQtKeyboardEventModifiers(event, true);
+
+    if (event->buttons().testFlag(Qt::LeftButton))
+        modifiers |= EVENTFLAG_LEFT_MOUSE_BUTTON;
+    if (event->buttons().testFlag(Qt::MiddleButton))
+        modifiers |= EVENTFLAG_MIDDLE_MOUSE_BUTTON;
+    if (event->buttons().testFlag(Qt::RightButton))
+        modifiers |= EVENTFLAG_RIGHT_MOUSE_BUTTON;
+
+    return modifiers;
+}
+
+//
+QCefWidgetUIEventHandler::QCefWidgetUIEventHandler(QWidget* pQCefWdg)
 {
     pQCefWdg_ = pQCefWdg;
-    pCefBrowser_ = pCefBrowser;
-    pBrowserHandler_ = pBrowserHandler;
     if (pQCefWdg_)
     {
+        pQCefWdg_->setMouseTracking(true);
         pQCefWdg_->installEventFilter(this);
     }
 }
 
 QCefWidgetUIEventHandler::~QCefWidgetUIEventHandler()
+{
+
+}
+
+void QCefWidgetUIEventHandler::SetCefBrowser(CefRefPtr<CefBrowser> pCefBrowser, CefRefPtr<QCefBrowserHandler> pBrowserHandler)
+{
+    pCefBrowser_ = pCefBrowser;
+    pBrowserHandler_ = pBrowserHandler;
+}
+
+void QCefWidgetUIEventHandler::ReleaseUIEvent()
 {
     if (pQCefWdg_)
     {
@@ -648,8 +703,169 @@ QCefWidgetUIEventHandler::~QCefWidgetUIEventHandler()
     }
 }
 
+bool QCefWidgetUIEventHandler::HandleMouseClickEvent(QMouseEvent *event)
+{
+    bool mouseUp = event->type() == QEvent::MouseButtonRelease;
+    int clickCount = 1;
+    if (event->type() == QEvent::MouseButtonDblClick)
+        clickCount = 2;
+
+    int32_t modifiers = TranslateQtMouseEventModifiers(event);
+    int32_t button = 0;
+    switch (event->button()) {
+    case Qt::LeftButton:
+        button = MBT_LEFT;
+        break;
+    case Qt::MiddleButton:
+        button = MBT_MIDDLE;
+        break;
+    case Qt::RightButton:
+        button = MBT_RIGHT;
+        break;
+    default:
+        qDebug().noquote() << "unknown button type: " << event->button();
+        return false;
+    }
+
+    CefMouseEvent e;
+    e.modifiers = modifiers;
+    e.x = event->x();
+    e.y = event->y();
+    if (pCefBrowser_ && pCefBrowser_->GetHost())
+        pCefBrowser_->GetHost()->SendMouseClickEvent(e, (cef_mouse_button_type_t)button, mouseUp, clickCount);
+    return true;
+}
+
+bool QCefWidgetUIEventHandler::HandleMouseMoveEvent(QMouseEvent *event)
+{
+    bool mouseLeave = event->type() == QEvent::Leave;
+    int32_t modifiers = EVENTFLAG_NONE;
+    if (!mouseLeave) {
+        modifiers = TranslateQtMouseEventModifiers(event);
+    }
+
+    CefMouseEvent e;
+    e.modifiers = modifiers;
+    e.x = event->x();
+    e.y = event->y();
+    if (pCefBrowser_ && pCefBrowser_->GetHost())
+        pCefBrowser_->GetHost()->SendMouseMoveEvent(e, mouseLeave);
+
+    return true;
+}
+
+bool QCefWidgetUIEventHandler::HandleMouseWheelEvent(QWheelEvent *event)
+{
+    /*
+    struct obs_mouse_event mouseEvent = {};
+
+    mouseEvent.modifiers = TranslateQtKeyboardEventModifiers(event, true);
+
+    int xDelta = 0;
+    int yDelta = 0;
+
+    if (!event->pixelDelta().isNull()) {
+        if (event->orientation() == Qt::Horizontal)
+            xDelta = event->pixelDelta().x();
+        else
+            yDelta = event->pixelDelta().y();
+    }
+    else {
+        if (event->orientation() == Qt::Horizontal)
+            xDelta = event->delta();
+        else
+            yDelta = event->delta();
+    }
+
+    if (GetSourceRelativeXY(event->x(), event->y(), mouseEvent.x,
+        mouseEvent.y))
+        obs_source_send_mouse_wheel(source, &mouseEvent, xDelta,
+            yDelta);
+*/
+    return true;
+}
+
+bool QCefWidgetUIEventHandler::HandleFocusEvent(QFocusEvent *event)
+{
+    bool focus = event->type() == QEvent::FocusIn;
+    if (pCefBrowser_ && pCefBrowser_->GetHost())
+        pCefBrowser_->GetHost()->SendFocusEvent(focus);
+    return true;
+}
+
+bool QCefWidgetUIEventHandler::HandleKeyEvent(QKeyEvent *event)
+{
+    QString text = event->text();
+    int32_t modifiers = TranslateQtKeyboardEventModifiers(event, false);
+    int32_t native_modifiers = event->nativeModifiers();
+    int32_t native_scancode = event->nativeScanCode();
+    int32_t native_vkey = event->nativeVirtualKey();
+
+    bool keyUp = event->type() == QEvent::KeyRelease;
+
+    CefKeyEvent e;
+    e.windows_key_code = native_vkey;
+    e.native_key_code = native_scancode;
+
+    e.type = keyUp ? KEYEVENT_KEYUP : KEYEVENT_RAWKEYDOWN;
+
+    if (!text.isEmpty()) {
+        std::wstring wide = text.toStdWString();
+        if (wide.size())
+            e.character = wide[0];
+    }
+
+    //e.native_key_code = native_vkey;
+    e.modifiers = native_modifiers;
+
+    if (pCefBrowser_ && pCefBrowser_->GetHost())
+        pCefBrowser_->GetHost()->SendKeyEvent(e);
+    if (!text.isEmpty() && !keyUp) {
+        e.type = KEYEVENT_CHAR;
+#ifdef __linux__
+        e.windows_key_code =
+            KeyboardCodeFromXKeysym(e.character);
+#else
+        e.windows_key_code = e.character;
+#endif
+        e.native_key_code = native_scancode;
+        if (pCefBrowser_ && pCefBrowser_->GetHost())
+            pCefBrowser_->GetHost()->SendKeyEvent(e);
+    }
+    return true;
+}
+
 bool QCefWidgetUIEventHandler::eventFilter(QObject *obj, QEvent *event)
 {
+    switch (event->type()) {
+    case QEvent::MouseButtonPress:
+    case QEvent::MouseButtonRelease:
+    case QEvent::MouseButtonDblClick:
+        return this->HandleMouseClickEvent(
+            static_cast<QMouseEvent *>(event));
+    case QEvent::MouseMove:
+    case QEvent::Enter:
+    case QEvent::Leave:
+        return this->HandleMouseMoveEvent(
+            static_cast<QMouseEvent *>(event));
 
+    case QEvent::Wheel:
+        return this->HandleMouseWheelEvent(
+            static_cast<QWheelEvent *>(event));
+    case QEvent::FocusIn:
+    case QEvent::FocusOut:
+        return this->HandleFocusEvent(
+            static_cast<QFocusEvent *>(event));
+    case QEvent::KeyPress:
+    case QEvent::KeyRelease:
+        return this->HandleKeyEvent(
+            static_cast<QKeyEvent *>(event));
+    case QEvent::Resize:
+        if (pCefBrowser_ && pCefBrowser_->GetHost())
+            pCefBrowser_->GetHost()->WasResized();
+        break;
+    default:
+        return false;
+    }
     return false;
 }
