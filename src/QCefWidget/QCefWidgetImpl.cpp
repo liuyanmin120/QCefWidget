@@ -62,13 +62,20 @@ bool QCefWidgetImpl::createBrowser(const QString& url) {
   if (browserCreated_)
     return true;
   Q_ASSERT(pWidget_);
-  CefWindowHandle hwnd = (CefWindowHandle)pWidget_->winId();
-  Q_ASSERT(hwnd);
-  if (!hwnd)
-    return false;
+  CefWindowHandle hwnd = 0;
+  if (!browserSetting_.osrQWidgetNoSysWnd)
+  {
+      hwnd = (CefWindowHandle)pWidget_->winId();
+      Q_ASSERT(hwnd);
+      if (!hwnd)
+          return false;
+  }
 
 #if (defined Q_OS_WIN32 || defined Q_OS_WIN64)
-  RegisterTouchWindow(hwnd, 0);
+  if (hwnd)
+  {
+      RegisterTouchWindow(hwnd, 0);
+  }
 #endif
 
   QCefGlobalSetting::initializeInstance();
@@ -954,6 +961,10 @@ bool QCefWidgetImpl::setOsrEnabled(bool b) {
   if (browserCreated_)
     return false;
   browserSetting_.osrEnabled = b;
+  if (!browserSetting_.osrEnabled)
+  {
+      setOsrNoSysWndEnabled(false);
+  }
   return true;
 }
 
