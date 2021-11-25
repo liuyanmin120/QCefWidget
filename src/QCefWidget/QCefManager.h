@@ -12,6 +12,7 @@
 class QWidget;
 class QCefWidgetImpl;
 class QCefDevToolsWnd;
+class QCefBrowserSetting;
 class QCefManager : public QObject {
   Q_OBJECT
  public:
@@ -26,7 +27,7 @@ class QCefManager : public QObject {
   QWidget* addBrowser(QWidget* pCefWidget,
                       QCefWidgetImpl* impl,
                       CefRefPtr<CefBrowser> browser,
-                      bool osrMode);  // return top-level widget
+                      QCefBrowserSetting* pQCefSet);  // return top-level widget
 
   void removeAllCefWidgets(QWidget* pTopWidget);
   void unhookTopWidget(QWidget* pTopWidget);
@@ -72,6 +73,7 @@ public slots:
     CefRefPtr<CefBrowser> browser;
     QCefDevToolsWnd* devToolsWnd;
     bool osrMode;
+    bool osrQWidgetNoSysWnd;
     BrowserStatus browserStatus;
     QCefWidgetImpl* cefWidgetImpl;
 
@@ -84,6 +86,7 @@ public slots:
       browser = nullptr;
       devToolsWnd = nullptr;
       osrMode = false;
+      osrQWidgetNoSysWnd = false;
       browserStatus = BS_NOT_CREATE;
     }
   } CefInfo;

@@ -86,13 +86,20 @@ void QCefManager::uninitializeCef() {
 QWidget* QCefManager::addBrowser(QWidget* pCefWidget,
                                  QCefWidgetImpl* cefWidgetImpl,
                                  CefRefPtr<CefBrowser> browser,
-                                 bool osrMode) {
+                                 QCefBrowserSetting* pQCefSet) {
   std::lock_guard<std::recursive_mutex> lg(cefsMutex_);
-  Q_ASSERT(pCefWidget && browser);
-  if (!pCefWidget || !browser)
+  Q_ASSERT(pCefWidget && browser && pQCefSet);
+  if (!pCefWidget || !browser || !pQCefSet)
     return nullptr;
 
-  QWidget* pTopWidget = getTopWidget(pCefWidget);
+  QWidget* pTopWidget = nullptr;
+  if (pQCefSet->osrQWidgetNoSysWnd)
+  {
+      pTopWidget = getTopWidget(pCefWidget);
+  }
+  else {
+      pTopWidget = pCefWidget;
+  }
   Q_ASSERT(pTopWidget);
 
   if (!pTopWidget)
@@ -103,22 +110,31 @@ QWidget* QCefManager::addBrowser(QWidget* pCefWidget,
   cefInfo.cefWidget = pCefWidget;
   cefInfo.cefWidgetImpl = cefWidgetImpl;
   cefInfo.cefWidgetTopWidget = pTopWidget;
-  cefInfo.cefWidgetTopWidgetHwnd = (HWND)pTopWidget->window()->winId();
-  cefInfo.osrMode = osrMode;
+  if (!pQCefSet->osrQWidgetNoSysWnd) {
+      cefInfo.cefWidgetTopWidgetHwnd = (HWND)pTopWidget->window()->winId();
+  }
+  cefInfo.osrMode = pQCefSet->osrEnabled;
+  cefInfo.osrQWidgetNoSysWnd = pQCefSet->osrQWidgetNoSysWnd;
   cefInfo.browserStatus = BS_CREATED;
 
-  for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
-    if (it->cefWidgetTopWidgetHwnd == cefInfo.cefWidgetTopWidgetHwnd) {
-      cefInfo.cefWidgetTopWidgetPrevWndProc = it->cefWidgetTopWidgetPrevWndProc;
-      break;
-    }
-  }
+  if (!pQCefSet->osrQWidgetNoSysWnd)
+  {
+      for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
+          if (it->cefWidgetTopWidgetHwnd == cefInfo.cefWidgetTopWidgetHwnd) {
+              cefInfo.cefWidgetTopWidgetPrevWndProc = it->cefWidgetTopWidgetPrevWndProc;
+              break;
+          }
+      }
 
-  if (!cefInfo.cefWidgetTopWidgetPrevWndProc) {
-    cefInfo.cefWidgetTopWidgetPrevWndProc = hookWidget(cefInfo.cefWidgetTopWidgetHwnd);
-    cefInfo.cefWidgetTopWidget->installEventFilter(this);
+      if (!cefInfo.cefWidgetTopWidgetPrevWndProc) {
+          cefInfo.cefWidgetTopWidgetPrevWndProc = hookWidget(cefInfo.cefWidgetTopWidgetHwnd);
+          cefInfo.cefWidgetTopWidget->installEventFilter(this);
+      }
+      Q_ASSERT(cefInfo.cefWidgetTopWidgetPrevWndProc);
   }
-  Q_ASSERT(cefInfo.cefWidgetTopWidgetPrevWndProc);
+  else {
+      cefInfo.cefWidgetTopWidget->installEventFilter(this);
+  }
 
   cefs_.push_back(cefInfo);
 
