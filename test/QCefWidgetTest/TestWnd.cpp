@@ -37,7 +37,7 @@ TestWnd::TestWnd(QWidget* parent) :
   systemPerformanceMonitor();
 
   qDebug() << "devicePixelRatioF:" << this->devicePixelRatioF();
-#if (QT_VERSION > QT_VERSION_CHECK(5,10,0))
+#if (QT_VERSION > QT_VERSION_CHECK(5,12,0))
   QScreen* pScreen =
       QGuiApplication::screenAt(this->mapToGlobal({ this->width() / 2, 0 }));
   qDebug() << "devicePixelRatio:" << pScreen->devicePixelRatio();
