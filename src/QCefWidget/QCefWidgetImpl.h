@@ -102,6 +102,7 @@ private:
 
   CefRefPtr<QCefBrowserHandler> pQCefViewHandler_;
   std::shared_ptr<QCefWidgetUIEventHandlerWin> pCefUIEventWin_;
+  std::shared_ptr<QCefWidgetUIEventHandler> pCefUIEvent_;
 
   bool browserClosing_;
   bool browserCreated_;

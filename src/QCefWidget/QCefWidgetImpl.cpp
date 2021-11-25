@@ -56,6 +56,8 @@ QCefWidgetImpl::~QCefWidgetImpl() {
   pQCefViewHandler_ = nullptr;
   if (pCefUIEventWin_)
     pCefUIEventWin_.reset();
+  if (pCefUIEvent_)
+      pCefUIEvent_.reset();
 }
 
 bool QCefWidgetImpl::createBrowser(const QString& url) {
@@ -69,6 +71,12 @@ bool QCefWidgetImpl::createBrowser(const QString& url) {
       Q_ASSERT(hwnd);
       if (!hwnd)
           return false;
+  }
+  else {
+      if (pCefUIEvent_)
+          pCefUIEvent_.reset();
+      pCefUIEvent_ = std::make_shared<QCefWidgetUIEventHandler>(pWidget_);
+      Q_ASSERT(pCefUIEvent_);
   }
 
 #if (defined Q_OS_WIN32 || defined Q_OS_WIN64)
@@ -228,64 +236,76 @@ bool QCefWidgetImpl::createDevTools(CefRefPtr<CefBrowser> targetBrowser) {
 void QCefWidgetImpl::browserCreatedNotify(CefRefPtr<CefBrowser> browser) {
   Q_ASSERT(pWidget_);
 #if (defined Q_OS_WIN32 || defined Q_OS_WIN64)
-  if (pCefUIEventWin_)
-    pCefUIEventWin_.reset();
-  if (browserSetting_.osrEnabled) {
-    Q_ASSERT(pQCefViewHandler_);
-    pCefUIEventWin_ = std::make_shared<QCefWidgetUIEventHandlerWin>(
-        (HWND)pWidget_->winId(), browser, pQCefViewHandler_);
-    Q_ASSERT(pCefUIEventWin_);
-    if (pCefUIEventWin_) {
-      pCefUIEventWin_->setDeviceScaleFactor(deviceScaleFactor_);
-    }
+  if (!browserSetting_.osrQWidgetNoSysWnd)
+  {
+      if (pCefUIEventWin_)
+          pCefUIEventWin_.reset();
+      if (browserSetting_.osrEnabled) {
+          Q_ASSERT(pQCefViewHandler_);
+          pCefUIEventWin_ = std::make_shared<QCefWidgetUIEventHandlerWin>(
+              (HWND)pWidget_->winId(), browser, pQCefViewHandler_);
+          Q_ASSERT(pCefUIEventWin_);
+          if (pCefUIEventWin_) {
+              pCefUIEventWin_->setDeviceScaleFactor(deviceScaleFactor_);
+          }
+      }
+
+      // See QTBUG-89646
+      QRect curRc = pWidget_->geometry();
+      ::SetWindowPos((HWND)pWidget_->winId(), NULL,
+          curRc.x() * deviceScaleFactor_,
+          curRc.y() * deviceScaleFactor_,
+          curRc.width() * deviceScaleFactor_,
+          curRc.height() * deviceScaleFactor_,
+          SWP_NOZORDER);
+
+      CefWindowHandle cefhwnd = NULL;
+      if (browser && browser->GetHost())
+          cefhwnd = browser->GetHost()->GetWindowHandle();
+      if (cefhwnd) {
+          ::SetWindowPos(cefhwnd,
+              NULL,
+              0,
+              0,
+              curRc.width() * deviceScaleFactor_,
+              curRc.height() * deviceScaleFactor_,
+              SWP_NOZORDER);
+      }
   }
-
-  // See QTBUG-89646
-  QRect curRc = pWidget_->geometry();
-  ::SetWindowPos((HWND)pWidget_->winId(), NULL,
-                 curRc.x() * deviceScaleFactor_,
-                 curRc.y() * deviceScaleFactor_,
-                 curRc.width() * deviceScaleFactor_,
-                 curRc.height() * deviceScaleFactor_,
-                 SWP_NOZORDER);
-
-  CefWindowHandle cefhwnd = NULL;
-  if (browser && browser->GetHost())
-    cefhwnd = browser->GetHost()->GetWindowHandle();
-  if (cefhwnd) {
-    ::SetWindowPos(cefhwnd,
-                   NULL,
-                   0,
-                   0,
-                   curRc.width() * deviceScaleFactor_,
-                   curRc.height() * deviceScaleFactor_,
-                   SWP_NOZORDER);
+  else {
+      Q_ASSERT(pCefUIEvent_);
+      if (pCefUIEvent_)
+      {
+          pCefUIEvent_->SetCefBrowser(browser, pQCefViewHandler_);
+      }
   }
 #else
 #error("No implement")
 #endif
 
   pTopWidget_ = QCefManager::getInstance().addBrowser(
-      pWidget_, this, browser, browserSetting_.osrEnabled);
+      pWidget_, this, browser, &browserSetting_);
 }
 
 void QCefWidgetImpl::browserContextCreatedNotify(CefRefPtr<CefBrowser> browser) {
   qDebug().noquote() << "QCefWidgetImpl::browserContextCreatedNotify:" << this;
   Q_ASSERT(browser && browser->GetHost());
   Q_ASSERT(pTopWidget_);
-  if (browser && browser->GetHost()) {
-    HWND hwnd = browser->GetHost()->GetWindowHandle();
-    Q_ASSERT(hwnd);
-    if (hwnd) {
-      if (browserSetting_.osrEnabled) {
-        subclassWindow(hwnd,
-                       (HWND)pWidget_->winId(),
-                       pTopWidget_);
+  if (!browserSetting_.osrQWidgetNoSysWnd) {
+      if (browser && browser->GetHost()) {
+          HWND hwnd = browser->GetHost()->GetWindowHandle();
+          Q_ASSERT(hwnd);
+          if (hwnd) {
+              if (browserSetting_.osrEnabled) {
+                  subclassWindow(hwnd,
+                      (HWND)pWidget_->winId(),
+                      pTopWidget_);
+              }
+              else {
+                  ::EnumChildWindows(hwnd, EnumWindowsProc4Subclass, reinterpret_cast<LPARAM>(this));
+              }
+          }
       }
-      else {
-        ::EnumChildWindows(hwnd, EnumWindowsProc4Subclass, reinterpret_cast<LPARAM>(this));
-      }
-    }
   }
 }
 
@@ -295,20 +315,25 @@ void QCefWidgetImpl::browserClosingNotify(CefRefPtr<CefBrowser> browser) {
 
   Q_ASSERT(browser && browser->GetHost());
   if (browser && browser->GetHost()) {
-    HWND hwnd = browser->GetHost()->GetWindowHandle();
-    Q_ASSERT(hwnd);
-    if (hwnd) {
-      if (browserSetting_.osrEnabled) {
-        unSubclassWindow(hwnd);
+      if (!browserSetting_.osrQWidgetNoSysWnd)
+      {
+          HWND hwnd = browser->GetHost()->GetWindowHandle();
+          Q_ASSERT(hwnd);
+          if (hwnd) {
+              if (browserSetting_.osrEnabled) {
+                  unSubclassWindow(hwnd);
+              }
+              else {
+                  ::EnumChildWindows(hwnd, EnumWindowsProc4Unsubclass, reinterpret_cast<LPARAM>(this));
+              }
+          }
       }
-      else {
-        ::EnumChildWindows(hwnd, EnumWindowsProc4Unsubclass, reinterpret_cast<LPARAM>(this));
-      }
-    }
   }
 
   if (pCefUIEventWin_)
     pCefUIEventWin_.reset();
+  if (pCefUIEvent_)
+      pCefUIEvent_.reset();
   QCefManager::getInstance().setBrowserClosing(pWidget_);
 }
 
@@ -433,18 +458,22 @@ BOOL CALLBACK QCefWidgetImpl::EnumWindowsProc4Unsubclass(HWND hwnd, LPARAM lPara
 
 void QCefWidgetImpl::onScreenLogicalDotsPerInchChanged() {
   qDebug().noquote() << "onScreenLogicalDotsPerInchChanged";
-  deviceScaleFactor_ = pWidget_->devicePixelRatioF();
-  if (pCefUIEventWin_)
-    pCefUIEventWin_->setDeviceScaleFactor(deviceScaleFactor_);
+  
+  if (!browserSetting_.osrQWidgetNoSysWnd)
+  {
+      deviceScaleFactor_ = pWidget_->devicePixelRatioF();
+      if (pCefUIEventWin_)
+        pCefUIEventWin_->setDeviceScaleFactor(deviceScaleFactor_);
 
-  // See QTBUG-89646
-  QRectF curRc = pWidget_->geometry();
-  ::SetWindowPos((HWND)pWidget_->winId(), NULL,
-                 curRc.x() * deviceScaleFactor_,
-                 curRc.y() * deviceScaleFactor_,
-                 curRc.width() * deviceScaleFactor_,
-                 curRc.height() * deviceScaleFactor_,
-                 SWP_NOZORDER);
+      // See QTBUG-89646
+      QRectF curRc = pWidget_->geometry();
+      ::SetWindowPos((HWND)pWidget_->winId(), NULL,
+                     curRc.x() * deviceScaleFactor_,
+                     curRc.y() * deviceScaleFactor_,
+                     curRc.width() * deviceScaleFactor_,
+                     curRc.height() * deviceScaleFactor_,
+                     SWP_NOZORDER);
+  }
 
   if (browserSetting_.osrEnabled) {
     // For simply, always notify screen info changed thought screen not changed.
@@ -456,19 +485,21 @@ void QCefWidgetImpl::onScreenLogicalDotsPerInchChanged() {
 void QCefWidgetImpl::onScreenChanged(QScreen* screen) {
   qDebug().noquote() << "onScreenChanged";
   connect(screen, &QScreen::logicalDotsPerInchChanged, this, &QCefWidgetImpl::onScreenLogicalDotsPerInchChanged);
+  if (!browserSetting_.osrQWidgetNoSysWnd)
+  {
+      deviceScaleFactor_ = pWidget_->devicePixelRatioF();
+      if (pCefUIEventWin_)
+          pCefUIEventWin_->setDeviceScaleFactor(deviceScaleFactor_);
 
-  deviceScaleFactor_ = pWidget_->devicePixelRatioF();
-  if (pCefUIEventWin_)
-    pCefUIEventWin_->setDeviceScaleFactor(deviceScaleFactor_);
-
-  // See QTBUG-89646
-  QRectF curRc = pWidget_->geometry();
-  ::SetWindowPos((HWND)pWidget_->winId(), NULL,
-                 curRc.x() * deviceScaleFactor_,
-                 curRc.y() * deviceScaleFactor_,
-                 curRc.width() * deviceScaleFactor_,
-                 curRc.height() * deviceScaleFactor_,
-                 SWP_NOZORDER);
+      // See QTBUG-89646
+      QRectF curRc = pWidget_->geometry();
+      ::SetWindowPos((HWND)pWidget_->winId(), NULL,
+          curRc.x() * deviceScaleFactor_,
+          curRc.y() * deviceScaleFactor_,
+          curRc.width() * deviceScaleFactor_,
+          curRc.height() * deviceScaleFactor_,
+          SWP_NOZORDER);
+  }
 
   if (browserSetting_.osrEnabled) {
     // For simply, always notify screen info changed thought screen not changed.
@@ -480,30 +511,34 @@ void QCefWidgetImpl::onScreenChanged(QScreen* screen) {
 void QCefWidgetImpl::draggableRegionsChangedNotify(
     CefRefPtr<CefBrowser> browser,
     const std::vector<CefDraggableRegion>& regions) {
-  ::SetRectRgn(draggableRegion_, 0, 0, 0, 0);
 
-  float dpiScale = deviceScaleFactor_;
+    if (!browserSetting_.osrQWidgetNoSysWnd)
+    {
+        ::SetRectRgn(draggableRegion_, 0, 0, 0, 0);
 
-  std::vector<CefDraggableRegion>::const_iterator it = regions.begin();
-  for (; it != regions.end(); ++it) {
-    cef_rect_t rc = it->bounds;
-    rc.x = (float)rc.x * dpiScale;
-    rc.y = (float)rc.y * dpiScale;
-    rc.width = (float)rc.width * dpiScale;
-    rc.height = (float)rc.height * dpiScale;
-    HRGN region =
-        ::CreateRectRgn(rc.x, rc.y, rc.x + rc.width, rc.y + rc.height);
-    ::CombineRgn(draggableRegion_,
-                 draggableRegion_,
-                 region,
-                 it->draggable ? RGN_OR : RGN_DIFF);
-    ::DeleteObject(region);
-  }
+        float dpiScale = deviceScaleFactor_;
 
-  if (regions.empty())
-    ::RemovePropW((HWND)pWidget_->winId(), kDraggableRegion);
-  else
-    ::SetPropW((HWND)pWidget_->winId(), kDraggableRegion, reinterpret_cast<HANDLE>(draggableRegion_));
+        std::vector<CefDraggableRegion>::const_iterator it = regions.begin();
+        for (; it != regions.end(); ++it) {
+            cef_rect_t rc = it->bounds;
+            rc.x = (float)rc.x * dpiScale;
+            rc.y = (float)rc.y * dpiScale;
+            rc.width = (float)rc.width * dpiScale;
+            rc.height = (float)rc.height * dpiScale;
+            HRGN region =
+                ::CreateRectRgn(rc.x, rc.y, rc.x + rc.width, rc.y + rc.height);
+            ::CombineRgn(draggableRegion_,
+                draggableRegion_,
+                region,
+                it->draggable ? RGN_OR : RGN_DIFF);
+            ::DeleteObject(region);
+        }
+
+        if (regions.empty())
+            ::RemovePropW((HWND)pWidget_->winId(), kDraggableRegion);
+        else
+            ::SetPropW((HWND)pWidget_->winId(), kDraggableRegion, reinterpret_cast<HANDLE>(draggableRegion_));
+    }
 }
 
 void QCefWidgetImpl::imeCompositionRangeChangedNotify(
@@ -640,7 +675,7 @@ bool QCefWidgetImpl::sendEventNotifyMessage(const QString& name,
 
   CefString cefStr;
   cefStr.FromWString(event.objectName().toStdWString());
-  dict->SetString("name", cefStr);
+  dict->SetString("eventname", cefStr);
 
   QList<QByteArray> keys = event.dynamicPropertyNames();
   for (QByteArray& key : keys) {
