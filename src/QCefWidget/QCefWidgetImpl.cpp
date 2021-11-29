@@ -47,6 +47,7 @@ QCefWidgetImpl::QCefWidgetImpl(WidgetType vt, QWidget* pWidget) :
   }
   connect(pWidget_->window()->windowHandle(), &QWindow::screenChanged, this, &QCefWidgetImpl::onScreenChanged);
   connect(pScreen, &QScreen::logicalDotsPerInchChanged, this, &QCefWidgetImpl::onScreenLogicalDotsPerInchChanged);
+  connect(this, &QCefWidgetImpl::sgBrowserCommand, this, &QCefWidgetImpl::onBrowserCommand);
 }
 
 QCefWidgetImpl::~QCefWidgetImpl() {
@@ -482,6 +483,19 @@ void QCefWidgetImpl::onScreenLogicalDotsPerInchChanged() {
   }
 }
 
+void QCefWidgetImpl::onBrowserCommand(QVariantMap mapVar)
+{
+    QString sCmd = mapVar["sCmdType"].toString();
+    if (sCmd == "setCursor")
+    {
+        Qt::CursorShape shape = (Qt::CursorShape)mapVar["nQtCursor"].toInt();
+        if (pWidget_)
+        {
+            pWidget_->setCursor(shape);
+        }
+    }
+}
+
 void QCefWidgetImpl::onScreenChanged(QScreen* screen) {
   qDebug().noquote() << "onScreenChanged";
   connect(screen, &QScreen::logicalDotsPerInchChanged, this, &QCefWidgetImpl::onScreenLogicalDotsPerInchChanged);
@@ -549,6 +563,14 @@ void QCefWidgetImpl::imeCompositionRangeChangedNotify(
     pCefUIEventWin_->OnImeCompositionRangeChanged(
         browser, selection_range, character_bounds);
   }
+}
+
+void QCefWidgetImpl::browserCursorChange(CefRefPtr<CefBrowser> browser, int nQtCursor)
+{
+    QVariantMap mapVar;
+    mapVar["sCmdType"] = "setCursor";
+    mapVar["nQtCursor"] = nQtCursor;
+    emit this->sgBrowserCommand(mapVar);
 }
 
 void QCefWidgetImpl::navigateToUrl(const QString& url) {

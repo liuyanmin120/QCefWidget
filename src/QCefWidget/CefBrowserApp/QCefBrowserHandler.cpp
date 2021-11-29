@@ -856,13 +856,33 @@ void QCefBrowserHandler::OnCursorChange(
   if (pImpl_ && !pImpl_->isOsrEnabled()) {
     return;
   }
-
-  QWidget* pWidget = pImpl_->getWidget();
-  if (pWidget) {
-    SetClassLongPtr((HWND)pWidget->winId(),
-                    GCLP_HCURSOR,
-                    static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
-    ::SetCursor(cursor);
+  if (pImpl_->isOsrNoSysWndEnabled())
+  {
+      static QMap<cef_cursor_type_t, Qt::CursorShape> shapeMap;
+      if (shapeMap.isEmpty())
+      {
+          shapeMap.insert(CT_POINTER, Qt::ArrowCursor);
+          shapeMap.insert(CT_HAND, Qt::PointingHandCursor);
+          shapeMap.insert(CT_IBEAM, Qt::IBeamCursor);
+          shapeMap.insert(CT_CROSS, Qt::CrossCursor);
+          shapeMap.insert(CT_HELP, Qt::WhatsThisCursor);
+      }
+      Qt::CursorShape shape = Qt::ArrowCursor;
+      if (shapeMap.find(type) != shapeMap.end())
+      {
+          shape = shapeMap[type];
+      }
+      pImpl_->browserCursorChange(browser, shape);
+      return true;
+  }
+  else {
+      QWidget* pWidget = pImpl_->getWidget();
+      if (pWidget) {
+          SetClassLongPtr((HWND)pWidget->winId(),
+              GCLP_HCURSOR,
+              static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
+          ::SetCursor(cursor);
+      }
   }
 }
 #elif CEF_VERSION_MAJOR >= 89
@@ -875,14 +895,35 @@ bool QCefBrowserHandler::OnCursorChange(
   if (pImpl_ && !pImpl_->isOsrEnabled()) {
     return false;
   }
-//   QWidget* pWidget = pImpl_->getWidget();
-//   if (pWidget) {
-//     SetClassLongPtr((HWND)pWidget->winId(),
-//                     GCLP_HCURSOR,
-//                     static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
-//     ::SetCursor(cursor);
-//     return true;
-//   }
+  if (pImpl_->isOsrNoSysWndEnabled())
+  {
+      static QMap<cef_cursor_type_t, Qt::CursorShape> shapeMap;
+      if (shapeMap.isEmpty())
+      {
+          shapeMap.insert(CT_POINTER, Qt::ArrowCursor);
+          shapeMap.insert(CT_HAND, Qt::PointingHandCursor);
+          shapeMap.insert(CT_IBEAM, Qt::IBeamCursor);
+          shapeMap.insert(CT_CROSS, Qt::CrossCursor);
+          shapeMap.insert(CT_HELP, Qt::WhatsThisCursor);
+      }
+      Qt::CursorShape shape = Qt::ArrowCursor;
+      if (shapeMap.find(type) != shapeMap.end())
+      {
+          shape = shapeMap[type];
+      }
+      pImpl_->browserCursorChange(browser, shape);
+      return true;
+  }
+  else {
+      QWidget* pWidget = pImpl_->getWidget();
+      if (pWidget) {
+          SetClassLongPtr((HWND)pWidget->winId(),
+              GCLP_HCURSOR,
+              static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
+          ::SetCursor(cursor);
+          return true;
+      }
+  }
   return false;
 }
 #endif

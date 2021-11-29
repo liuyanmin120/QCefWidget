@@ -44,6 +44,7 @@ public:
   void browserDestoryedNotify(CefRefPtr<CefBrowser> browser);
   void draggableRegionsChangedNotify(CefRefPtr<CefBrowser> browser, const std::vector<CefDraggableRegion> &regions);
   void imeCompositionRangeChangedNotify(CefRefPtr<CefBrowser> browser, const CefRange &selection_range, const CefRenderHandler::RectList &character_bounds);
+  void browserCursorChange(CefRefPtr<CefBrowser> browser, int nQtCursor);
 
   QWidget *getWidget();
   WidgetType getWidgetType();
@@ -81,6 +82,9 @@ public:
   bool removeResourceProvider(const QString &identifier);
   bool removeAllResourceProvider();
 
+signals:
+    void sgBrowserCommand(QVariantMap);
+
 protected:
   bool sendEventNotifyMessage(const QString &name, const QCefEvent &event);
   CefRefPtr<CefBrowserHost> getCefBrowserHost();
@@ -95,6 +99,8 @@ protected:
 private slots:
   void onScreenChanged(QScreen *screen);
   void onScreenLogicalDotsPerInchChanged();
+  void onBrowserCommand(QVariantMap);
+
 private:
   WidgetType vt_;
   QWidget *pWidget_;
