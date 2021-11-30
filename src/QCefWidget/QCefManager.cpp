@@ -93,13 +93,7 @@ QWidget* QCefManager::addBrowser(QWidget* pCefWidget,
     return nullptr;
 
   QWidget* pTopWidget = nullptr;
-  if (pQCefSet->osrQWidgetNoSysWnd)
-  {
-      pTopWidget = getTopWidget(pCefWidget);
-  }
-  else {
-      pTopWidget = pCefWidget;
-  }
+  pTopWidget = getTopWidget(pCefWidget);
   Q_ASSERT(pTopWidget);
 
   if (!pTopWidget)
@@ -437,9 +431,16 @@ bool QCefManager::eventFilter(QObject* obj, QEvent* event) {
       Q_ASSERT(this->aliveBrowserCount(it->cefWidgetTopWidget) > 0);
 
       it->cefWidgetTopWidget->removeEventFilter(this);
-      event->ignore();
-      qDebug().noquote() << "Ignore close event";
-      return true;
+      if (!it->osrQWidgetNoSysWnd)
+      {
+          event->ignore();
+          qDebug().noquote() << "Ignore close event";
+          return true;
+      }
+      else {
+          qDebug().noquote() << "Ignore close event";
+          return false;
+      }
     }
   }
 
