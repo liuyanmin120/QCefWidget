@@ -351,17 +351,16 @@ void QCefWidgetImpl::browserDestoryedNotify(CefRefPtr<CefBrowser> browser) {
 #if (QT_VERSION > QT_VERSION_CHECK(5,12,0))
         QMetaObject::invokeMethod(
             pTopWidget_, [this]() {
-                QTimer::singleShot(500, [this]() { // give enought time to release cef resource
+                QTimer::singleShot(500, this, [this]() { // give enought time to release cef resource
                     if (pTopWidget_)
                         pTopWidget_->close();
                     });
             },
             Qt::QueuedConnection);
 #else
-        QTimer::singleShot(500, [this]() { // give enought time to release cef resource
-            if (pTopWidget_)
-                pTopWidget_->close();
-            });
+        QVariantMap mapVar;
+        mapVar["sCmdType"] = "TopWidgetClose";
+        emit this->sgBrowserCommand(mapVar);
 #endif
     }
   }
@@ -494,6 +493,20 @@ void QCefWidgetImpl::onBrowserCommand(QVariantMap mapVar)
             pWidget_->setCursor(shape);
         }
     }
+    else if (sCmd == "CreateBrowser")
+    {
+        QString sUrl = mapVar["sUrl"].toString();
+        if (!createBrowser(sUrl)) {
+            Q_ASSERT(false);
+        }
+    }
+    else if (sCmd == "TopWidgetClose")
+    {
+        QTimer::singleShot(500, this, [this]() { // give enought time to release cef resource
+            if (pTopWidget_)
+                pTopWidget_->close();
+            });
+    }
 }
 
 void QCefWidgetImpl::onScreenChanged(QScreen* screen) {
@@ -586,11 +599,10 @@ void QCefWidgetImpl::navigateToUrl(const QString& url) {
   },
           Qt::QueuedConnection);
 #else
-      QTimer::singleShot(0, this, [this, url]() {
-          if (!createBrowser(url)) {
-              Q_ASSERT(false);
-          }
-          });
+      QVariantMap mapVar;
+      mapVar["sCmdType"] = "CreateBrowser";
+      mapVar["sUrl"] = url;
+      emit this->sgBrowserCommand(mapVar);
 #endif
     return;
   }
