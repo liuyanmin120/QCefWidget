@@ -785,11 +785,17 @@ bool QCefWidgetUIEventHandler::HandleMouseWheelEvent(QWheelEvent *event)
     return true;
 }
 
-bool QCefWidgetUIEventHandler::HandleFocusEvent(QFocusEvent *event)
+bool QCefWidgetUIEventHandler::HandleFocusEvent(bool bFocus)
 {
-    bool focus = event->type() == QEvent::FocusIn;
     if (pCefBrowser_ && pCefBrowser_->GetHost())
-        pCefBrowser_->GetHost()->SendFocusEvent(focus);
+        pCefBrowser_->GetHost()->SendFocusEvent(bFocus);
+    return true;
+}
+
+bool QCefWidgetUIEventHandler::HandleResizeEvent()
+{
+    if (pCefBrowser_ && pCefBrowser_->GetHost())
+        pCefBrowser_->GetHost()->WasResized();
     return true;
 }
 
@@ -848,22 +854,20 @@ bool QCefWidgetUIEventHandler::eventFilter(QObject *obj, QEvent *event)
     case QEvent::Leave:
         return this->HandleMouseMoveEvent(
             static_cast<QMouseEvent *>(event));
-
     case QEvent::Wheel:
         return this->HandleMouseWheelEvent(
             static_cast<QWheelEvent *>(event));
     case QEvent::FocusIn:
+    case QEvent::Show:
+        return this->HandleFocusEvent(true);
     case QEvent::FocusOut:
-        return this->HandleFocusEvent(
-            static_cast<QFocusEvent *>(event));
+    case QEvent::Hide:
+        return this->HandleFocusEvent(false);
     case QEvent::KeyPress:
     case QEvent::KeyRelease:
-        return this->HandleKeyEvent(
-            static_cast<QKeyEvent *>(event));
+        return this->HandleKeyEvent(static_cast<QKeyEvent *>(event));
     case QEvent::Resize:
-        if (pCefBrowser_ && pCefBrowser_->GetHost())
-            pCefBrowser_->GetHost()->WasResized();
-        break;
+        return this->HandleResizeEvent();
     default:
         return false;
     }

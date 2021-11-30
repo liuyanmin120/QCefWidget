@@ -83,8 +83,9 @@ protected:
     bool HandleMouseClickEvent(QMouseEvent *event);
     bool HandleMouseMoveEvent(QMouseEvent *event);
     bool HandleMouseWheelEvent(QWheelEvent *event);
-    bool HandleFocusEvent(QFocusEvent *event);
     bool HandleKeyEvent(QKeyEvent *event);
+    bool HandleFocusEvent(bool bFocus);
+    bool HandleResizeEvent();
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event);
