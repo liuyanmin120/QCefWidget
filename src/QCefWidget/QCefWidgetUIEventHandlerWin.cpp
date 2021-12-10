@@ -787,8 +787,12 @@ bool QCefWidgetUIEventHandler::HandleMouseWheelEvent(QWheelEvent *event)
 
 bool QCefWidgetUIEventHandler::HandleFocusEvent(bool bFocus)
 {
-    if (pCefBrowser_ && pCefBrowser_->GetHost())
+    if (pCefBrowser_ && pCefBrowser_->GetHost()) {
         pCefBrowser_->GetHost()->SendFocusEvent(bFocus);
+        if (bFocus) {
+            pCefBrowser_->GetHost()->WasResized();
+        }
+    }
     return true;
 }
 
