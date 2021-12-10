@@ -1003,13 +1003,24 @@ void QCefWidgetImpl::visibleChangedNotify(bool visible) {
   CefRefPtr<CefBrowserHost> host = getCefBrowserHost();
   if (!host)
     return;
-  if (visible) {
-    host->WasHidden(false);
-    host->SendFocusEvent(true);
+  if (!browserSetting_.osrQWidgetNoSysWnd) {
+      if (visible) {
+          host->WasHidden(false);
+          host->SendFocusEvent(true);
+      }
+      else {
+          host->SendFocusEvent(false);
+          host->WasHidden(true);
+      }
   }
   else {
-    host->SendFocusEvent(false);
-    host->WasHidden(true);
+      if (visible) {
+          host->SendFocusEvent(true);
+          host->WasResized();
+      }
+      else {
+          host->SendFocusEvent(false);
+      }
   }
 }
 

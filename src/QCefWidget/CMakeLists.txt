@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.4.1)
 project(${QCEF_WIDGET_DLL})
 
+if(MSVC)
+	# win relase pdb 
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+endif()
+
 set_property(GLOBAL PROPERTY AUTOGEN_SOURCE_GROUP "Generated Files")
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
