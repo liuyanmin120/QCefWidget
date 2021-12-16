@@ -126,13 +126,34 @@ QWidget* QCefManager::addBrowser(QWidget* pCefWidget,
       }
       Q_ASSERT(cefInfo.cefWidgetTopWidgetPrevWndProc);
   }
-  else {
-      cefInfo.cefWidgetTopWidget->installEventFilter(this);
-  }
 
   cefs_.push_back(cefInfo);
 
   return pTopWidget;
+}
+
+void QCefManager::closeBrowser(QWidget* pCefWidget)
+{
+    std::lock_guard<std::recursive_mutex> lg(cefsMutex_);
+    Q_ASSERT(pCefWidget);
+    if (!pCefWidget)
+        return;
+
+    for (std::list<CefInfo>::iterator it = cefs_.begin(); it != cefs_.end(); it++) {
+        if (it->browserStatus == BS_CREATED) {
+            if (it->cefWidget == pCefWidget && it->browser &&
+                it->browser->GetHost()) {
+                it->browser->GetHost()->CloseBrowser(false);
+            }
+        }
+        else if (it->browserStatus == BS_CLOSING && !it->osrMode && !it->osrQWidgetNoSysWnd) {
+            HWND cefhwnd = NULL;
+            if (it->browser && it->browser->GetHost())
+                cefhwnd = it->browser->GetHost()->GetWindowHandle();
+            if (cefhwnd)
+                PostMessage(cefhwnd, WM_CLOSE, 0, 0);
+        }
+    }
 }
 
 void QCefManager::removeAllCefWidgets(QWidget* pTopWidget) {
@@ -431,16 +452,9 @@ bool QCefManager::eventFilter(QObject* obj, QEvent* event) {
       Q_ASSERT(this->aliveBrowserCount(it->cefWidgetTopWidget) > 0);
 
       it->cefWidgetTopWidget->removeEventFilter(this);
-      if (!it->osrQWidgetNoSysWnd)
-      {
-          event->ignore();
-          qDebug().noquote() << "Ignore close event";
-          return true;
-      }
-      else {
-          qDebug().noquote() << "Ignore close event";
-          return false;
-      }
+      event->ignore();
+      qDebug().noquote() << "Ignore close event";
+      return true;
     }
   }
 

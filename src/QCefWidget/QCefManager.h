@@ -29,6 +29,8 @@ class QCefManager : public QObject {
                       CefRefPtr<CefBrowser> browser,
                       QCefBrowserSetting* pQCefSet);  // return top-level widget
 
+  void closeBrowser(QWidget* pCefWidget);
+
   void removeAllCefWidgets(QWidget* pTopWidget);
   void unhookTopWidget(QWidget* pTopWidget);
 
