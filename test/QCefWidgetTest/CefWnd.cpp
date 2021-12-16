@@ -23,7 +23,29 @@ CefWnd::CefWnd(bool frameless, bool translucentWindowBackground, QWidget* parent
   this->setResizeable(true);
 }
 
-CefWnd::~CefWnd() {}
+CefWnd::~CefWnd() 
+{
+    if (usingGLWidget_) {
+        if (pCefGLWidget_->osrNoSysWndEnabled())
+        {
+            // delay del cef ui. browser close use
+            pCefGLWidget_->hide();
+            this->layout()->removeWidget(pCefGLWidget_);
+            pCefGLWidget_->setParent(nullptr);
+            pCefGLWidget_->closeBrowserDelLater();
+        }
+    }
+    else {
+        if (pCefWidget_->osrNoSysWndEnabled())
+        {
+            // delay del cef ui. browser close use
+            pCefWidget_->hide();
+            this->layout()->removeWidget(pCefWidget_);
+            pCefWidget_->setParent(nullptr);
+            pCefWidget_->closeBrowserDelLater();
+        }
+    }
+}
 
 void CefWnd::setupUi() {
   this->setObjectName("CefWnd");
