@@ -28,6 +28,7 @@ public:
   bool isLoadingBrowser();
   void reloadBrowser(bool bIgnoreCache);
   void stopLoadBrowser();
+  void closeBrowser();
 
   bool triggerEvent(const QString &name, const QCefEvent &event);
   bool responseCefQuery(const QCefQuery &query);

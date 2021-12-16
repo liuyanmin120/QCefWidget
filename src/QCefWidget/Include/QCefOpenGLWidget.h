@@ -42,6 +42,7 @@ class QCEFWIDGET_EXPORT QCefOpenGLWidget : public QOpenGLWidget {
   virtual bool isLoadingBrowser();
   virtual void reloadBrowser(bool bIgnoreCache);
   virtual void stopLoadBrowser();
+  virtual void closeBrowserDelLater(int DelayMs = 1000);
 
   virtual bool triggerEvent(const QString& name, const QCefEvent& event);
 

@@ -14,6 +14,7 @@
 #include "QCefGlobalSetting.h"
 #include "CefBrowserApp/QCefRequestContextHandler.h"
 #include "Win32DpiHelper.h"
+#include <QDateTime>
 
 namespace {
 LPCWSTR kPreWndProc = L"CefPreWndProc";
@@ -51,7 +52,7 @@ QCefWidgetImpl::QCefWidgetImpl(WidgetType vt, QWidget* pWidget) :
 }
 
 QCefWidgetImpl::~QCefWidgetImpl() {
-  qDebug().noquote() << "QCefWidgetImpl::~QCefWidgetImpl:" << this;
+  qDebug().noquote() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ") << "QCefWidgetImpl::~QCefWidgetImpl:" << this;
   ::DeleteObject(draggableRegion_);
   draggableRegion_ = nullptr;
   pQCefViewHandler_ = nullptr;
@@ -347,7 +348,7 @@ void QCefWidgetImpl::browserDestoryedNotify(CefRefPtr<CefBrowser> browser) {
   if (QCefManager::getInstance().aliveBrowserCount(pTopWidget_) == 0) {
     QCefManager::getInstance().unhookTopWidget(pTopWidget_);
     QCefManager::getInstance().removeAllCefWidgets(pTopWidget_);
-    if (pTopWidget_) {
+    if (!isOsrNoSysWndEnabled() && pTopWidget_) {
 #if (QT_VERSION > QT_VERSION_CHECK(5,12,0))
         QMetaObject::invokeMethod(
             pTopWidget_, [this]() {
@@ -499,6 +500,10 @@ void QCefWidgetImpl::onBrowserCommand(QVariantMap mapVar)
         if (!createBrowser(sUrl)) {
             Q_ASSERT(false);
         }
+    }
+    else if (sCmd == "CloseBrowser")
+    {
+        QCefManager::getInstance().closeBrowser(pWidget_);
     }
     else if (sCmd == "TopWidgetClose")
     {
@@ -658,6 +663,13 @@ void QCefWidgetImpl::reloadBrowser(bool bIgnoreCache) {
 void QCefWidgetImpl::stopLoadBrowser() {
   if (pQCefViewHandler_ && pQCefViewHandler_->browser())
     pQCefViewHandler_->browser()->StopLoad();
+}
+
+void QCefWidgetImpl::closeBrowser()
+{
+    QVariantMap mapVar;
+    mapVar["sCmdType"] = "CloseBrowser";
+    emit this->sgBrowserCommand(mapVar);
 }
 
 bool QCefWidgetImpl::triggerEvent(const QString& name, const QCefEvent& event) {

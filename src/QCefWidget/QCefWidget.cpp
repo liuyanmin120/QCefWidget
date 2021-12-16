@@ -12,6 +12,8 @@
 #include <include/cef_frame.h>
 #include <include/cef_sandbox_win.h>
 #include "QCefManager.h"
+#include <QDateTime>
+#include <QTimer>
 
 QCefWidget::QCefWidget(const QString& url, QWidget* parent) :
     QWidget(parent) {
@@ -28,7 +30,7 @@ QCefWidget::QCefWidget(const QString& url, QWidget* parent) :
 }
 
 QCefWidget::~QCefWidget() {
-  qDebug().noquote() << "QCefWidget::~QCefWidget";
+    qDebug().noquote() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ") << "QCefWidget::~QCefWidget " << this;
 }
 
 void QCefWidget::navigateToUrl(const QString& url) {
@@ -69,6 +71,14 @@ void QCefWidget::reloadBrowser(bool bIgnoreCache) {
 void QCefWidget::stopLoadBrowser() {
   Q_ASSERT(pImpl_);
   pImpl_->stopLoadBrowser();
+}
+
+void QCefWidget::closeBrowserDelLater(int DelayMs /*= 1000*/)
+{
+    qDebug().noquote() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ") << "closeBrowserDelLater " << this;
+    Q_ASSERT(pImpl_);
+    pImpl_->closeBrowser();
+    QTimer::singleShot(DelayMs, this, SLOT(deleteLater()));
 }
 
 bool QCefWidget::triggerEvent(const QString& name, const QCefEvent& event) {
@@ -235,6 +245,10 @@ bool QCefWidget::event(QEvent* event) {
   // pImpl_ may be empty, if we call winId in QCefWidgetImpl::QCefWidgetImpl().
   if (!pImpl_)
     return QWidget::event(event);
+
+  if (pImpl_->browserSetting().osrQWidgetNoSysWnd) {
+      return QWidget::event(event);
+  }
 
   if (pImpl_->event(event)) {
     return true;

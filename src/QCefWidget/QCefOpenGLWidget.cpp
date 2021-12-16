@@ -11,6 +11,8 @@
 #include <include/cef_frame.h>
 #include <include/cef_sandbox_win.h>
 #include "QCefManager.h"
+#include <QDateTime>
+#include <QTimer>
 
 QCefOpenGLWidget::QCefOpenGLWidget(const QString& url,
                                    QWidget* parent /*= nullptr*/) :
@@ -27,7 +29,7 @@ QCefOpenGLWidget::QCefOpenGLWidget(const QString& url,
 }
 
 QCefOpenGLWidget::~QCefOpenGLWidget() {
-  qDebug().noquote() << "QCefOpenGLWidget::~QCefOpenGLWidget";
+  qDebug().noquote() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ") << "QCefOpenGLWidget::~QCefOpenGLWidget " << this;
 }
 
 void QCefOpenGLWidget::navigateToUrl(const QString& url) {
@@ -68,6 +70,14 @@ void QCefOpenGLWidget::reloadBrowser(bool bIgnoreCache) {
 void QCefOpenGLWidget::stopLoadBrowser() {
   Q_ASSERT(pImpl_);
   pImpl_->stopLoadBrowser();
+}
+
+void QCefOpenGLWidget::closeBrowserDelLater(int DelayMs /*= 1000*/)
+{
+    qDebug().noquote() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ") << "closeBrowserDelLater " << this;
+    Q_ASSERT(pImpl_);
+    pImpl_->closeBrowser();
+    QTimer::singleShot(DelayMs, this, SLOT(deleteLater()));
 }
 
 bool QCefOpenGLWidget::triggerEvent(const QString& name,
@@ -207,6 +217,10 @@ bool QCefOpenGLWidget::event(QEvent* event) {
   // pImpl_ may be empty, if we call winId in QCefWidgetImpl::QCefWidgetImpl().
   if (!pImpl_)
     return QOpenGLWidget::event(event);
+
+  if (pImpl_->browserSetting().osrQWidgetNoSysWnd) {
+      return QWidget::event(event);
+  }
 
   if (pImpl_->event(event)) {
     return true;
