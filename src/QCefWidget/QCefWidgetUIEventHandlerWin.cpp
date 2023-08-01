@@ -680,6 +680,7 @@ QCefWidgetUIEventHandler::QCefWidgetUIEventHandler(QWidget* pQCefWdg)
     if (pQCefWdg_)
     {
         pQCefWdg_->setMouseTracking(true);
+        pQCefWdg_->setFocusPolicy(Qt::StrongFocus);
         pQCefWdg_->installEventFilter(this);
     }
 }
@@ -756,10 +757,7 @@ bool QCefWidgetUIEventHandler::HandleMouseMoveEvent(QMouseEvent *event)
 
 bool QCefWidgetUIEventHandler::HandleMouseWheelEvent(QWheelEvent *event)
 {
-    /*
-    struct obs_mouse_event mouseEvent = {};
-
-    mouseEvent.modifiers = TranslateQtKeyboardEventModifiers(event, true);
+    int32_t modifiers = TranslateQtKeyboardEventModifiers(event, true);
 
     int xDelta = 0;
     int yDelta = 0;
@@ -777,11 +775,12 @@ bool QCefWidgetUIEventHandler::HandleMouseWheelEvent(QWheelEvent *event)
             yDelta = event->delta();
     }
 
-    if (GetSourceRelativeXY(event->x(), event->y(), mouseEvent.x,
-        mouseEvent.y))
-        obs_source_send_mouse_wheel(source, &mouseEvent, xDelta,
-            yDelta);
-*/
+    CefMouseEvent e;
+    e.modifiers = modifiers;
+    e.x = event->x();
+    e.y = event->y();
+    if (pCefBrowser_ && pCefBrowser_->GetHost())
+        pCefBrowser_->GetHost()->SendMouseWheelEvent(e, xDelta, yDelta);
     return true;
 }
 
