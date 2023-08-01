@@ -804,7 +804,7 @@ bool QCefWidgetUIEventHandler::HandleResizeEvent()
 
 bool QCefWidgetUIEventHandler::HandleKeyEvent(QKeyEvent *event)
 {
-    QString text = event->text();
+    QString text = event->text().toUtf8().data();
     int32_t modifiers = TranslateQtKeyboardEventModifiers(event, false);
     int32_t native_modifiers = event->nativeModifiers();
     int32_t native_scancode = event->nativeScanCode();
@@ -844,6 +844,53 @@ bool QCefWidgetUIEventHandler::HandleKeyEvent(QKeyEvent *event)
     return true;
 }
 
+bool QCefWidgetUIEventHandler::HandleInputMethodEvent(QInputMethodEvent *event)
+{
+    QString composingText = event->preeditString();
+    QString composedText = event->commitString();
+
+    if (!composedText.isEmpty()) {
+        if (pCefBrowser_)
+        {
+            pCefBrowser_->GetHost()->ImeCommitText(composedText.toStdString(), CefRange(UINT32_MAX, UINT32_MAX), 0);
+        }
+    }
+    else if (!composingText.isEmpty()) {
+        CefCompositionUnderline underline;
+        underline.background_color = 0;
+        underline.range = { 0, static_cast<decltype(CefRange::to)>(composingText.length()) };
+
+        CefRange selectionRange;
+        for (auto& attr : event->attributes()) {
+            switch (attr.type) {
+            case QInputMethodEvent::TextFormat:
+                break;
+            case QInputMethodEvent::Cursor:
+                selectionRange.Set(attr.start, attr.start);
+                break;
+            case QInputMethodEvent::Language:
+            case QInputMethodEvent::Ruby:
+            case QInputMethodEvent::Selection:
+                break;
+            default:
+                break;
+            }
+        }
+        if (pCefBrowser_)
+        {
+            pCefBrowser_->GetHost()->ImeSetComposition(
+                composingText.toStdString(), { underline }, CefRange(UINT32_MAX, UINT32_MAX), selectionRange);
+        }
+    }
+    else {
+        if (pCefBrowser_)
+        {
+            pCefBrowser_->GetHost()->ImeCancelComposition();
+        }
+    }
+    return true;
+}
+
 bool QCefWidgetUIEventHandler::eventFilter(QObject *obj, QEvent *event)
 {
     switch (event->type()) {
@@ -869,9 +916,12 @@ bool QCefWidgetUIEventHandler::eventFilter(QObject *obj, QEvent *event)
     case QEvent::KeyPress:
     case QEvent::KeyRelease:
         return this->HandleKeyEvent(static_cast<QKeyEvent *>(event));
+    case QEvent::InputMethod:
+        return this->HandleInputMethodEvent(static_cast<QInputMethodEvent *>(event));
     case QEvent::Resize:
         return this->HandleResizeEvent();
     default:
+        //qDebug().noquote() << "unknown event type: " << event->type();
         return false;
     }
     return false;

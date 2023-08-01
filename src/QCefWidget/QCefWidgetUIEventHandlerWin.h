@@ -84,6 +84,7 @@ protected:
     bool HandleMouseMoveEvent(QMouseEvent *event);
     bool HandleMouseWheelEvent(QWheelEvent *event);
     bool HandleKeyEvent(QKeyEvent *event);
+    bool HandleInputMethodEvent(QInputMethodEvent *event); // Chinese
     bool HandleFocusEvent(bool bFocus);
     bool HandleResizeEvent();
 
